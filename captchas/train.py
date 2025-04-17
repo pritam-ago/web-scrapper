@@ -8,8 +8,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 BATCH_SIZE = 32
 EPOCHS = 15
+CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-"
 MAX_LEN = 5
-CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
 
 dataset = CaptchaDataset("labels.csv", "captchas", max_length=MAX_LEN, charset=CHARSET)
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
