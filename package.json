@@ -1,0 +1,19 @@
+{
+  "name": "web-data-extractor",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "2captcha": "^3.0.5-2",
+    "axios": "^1.8.4",
+    "dotenv": "^16.5.0",
+    "puppeteer": "^24.6.1"
+  }
+}

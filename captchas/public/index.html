@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CAPTCHA Labeler</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+    }
+    img {
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+    input {
+      font-size: 1.2rem;
+      padding: 8px;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>CAPTCHA Labeler</h1>
+  <div id="status">Loading...</div>
+  <img id="captcha" src="" width="200" />
+  <form id="form">
+    <input type="text" id="labelInput" placeholder="Enter CAPTCHA" autocomplete="off" required />
+    <br />
+    <button type="submit">Submit</button>
+  </form>
+
+  <script>
+    const captcha = document.getElementById('captcha');
+    const status = document.getElementById('status');
+    const labelInput = document.getElementById('labelInput');
+    const form = document.getElementById('form');
+    let currentFilename = null;
+
+    async function loadNext() {
+      const res = await fetch('/next');
+      const data = await res.json();
+      if (data.done) {
+        status.textContent = '✅ All images labeled!';
+        captcha.style.display = 'none';
+        form.style.display = 'none';
+        return;
+      }
+      currentFilename = data.filename;
+      captcha.src = `../captchas/${currentFilename}`;
+      status.textContent = `Labeling: ${currentFilename}`;
+      labelInput.value = '';
+      labelInput.focus();
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const label = labelInput.value.trim();
+      if (!label) return;
+
+      await fetch('/label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: currentFilename, label }),
+      });
+
+      loadNext();
+    });
+
+    loadNext();
+  </script>
+</body>
+</html>
