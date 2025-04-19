@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { setTimeout as delay } from 'timers/promises';
 
-const CAPTCHA_URL = 'https://sp.srmist.edu.in/srmiststudentportal/captchas'; // 🔁 Update this
+const CAPTCHA_URL = 'https://sp.srmist.edu.in/srmiststudentportal/captchas'; 
 const OUTPUT_DIR = join(process.cwd(), 'captchas');
 const TOTAL = 500;
 const DELAY_MS = 200;

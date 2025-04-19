@@ -1,50 +1,58 @@
 import torch
+import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
-from dataset import CaptchaDataset
-from model import CaptchaCNN
+from model import CaptchaDataset, CaptchaModel
+from torchvision import transforms
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(torch.cuda.is_available())
+# Parameters
+csv_file = 'labels.csv'  # Path to the CSV file
+image_folder = 'captchas/'  # Path to the images
+max_length = 5
+charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-"
 
-BATCH_SIZE = 32
-EPOCHS = 15
-CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-"
-MAX_LEN = 5
+# Create Dataset and DataLoader
+transform = transforms.Compose([transforms.Resize((64, 256)), transforms.ToTensor()])
+dataset = CaptchaDataset(csv_file=csv_file, image_folder=image_folder, transform=transform, max_length=max_length, charset=charset)
+dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
+# Define the model, loss function, and optimizer
+num_classes = len(charset)
+model = CaptchaModel(num_classes=num_classes, max_length=max_length)
+model = model.cuda()
 
-dataset = CaptchaDataset("labels.csv", "captchas", max_length=MAX_LEN, charset=CHARSET)
-dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+criterion = nn.CTCLoss(blank=num_classes-1)  # CTC Loss requires a "blank" index, usually the last index
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-model = CaptchaCNN(num_chars=MAX_LEN, num_classes=len(CHARSET)).to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-def accuracy(preds, labels):
-    preds = preds.argmax(2)
-    correct = 0
-    for p, l in zip(preds, labels):
-        if all(p[i] == l[i] for i in range(len(l))):
-            correct += 1
-    return correct / len(labels)
-
-for epoch in range(EPOCHS):
+# Training loop
+num_epochs = 10
+for epoch in range(num_epochs):
     model.train()
-    total_loss, acc = 0, 0
-
+    running_loss = 0.0
     for images, labels in dataloader:
-        images = images.to(device)
-        labels = torch.tensor(labels).to(device)
+        images = images.squeeze(1)  # Remove single channel dimension
+        images, labels = images.cuda(), labels.cuda()
 
-        out = model(images)
-        loss = sum(F.cross_entropy(out[:, i, :], labels[:, i]) for i in range(MAX_LEN))
-
+        # Zero gradients
         optimizer.zero_grad()
+
+        # Forward pass
+        outputs = model(images)
+
+        # Calculate CTC loss
+        input_lengths = torch.full((images.size(0),), outputs.size(1), dtype=torch.long).cuda()
+        target_lengths = torch.full((images.size(0),), labels.size(1), dtype=torch.long).cuda()
+
+        loss = criterion(outputs.log_softmax(2), labels, input_lengths, target_lengths)
+
+        # Backward pass and optimization
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
-        acc += accuracy(out.detach().cpu(), labels.cpu())
+        running_loss += loss.item()
 
-    print(f"Epoch {epoch+1}/{EPOCHS} | Loss: {total_loss:.2f} | Acc: {acc/len(dataloader):.2%}")
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {running_loss/len(dataloader):.4f}")
 
-torch.save(model.state_dict(), "captcha_model.pth")
-print("✅ Model saved as captcha_model.pth")
+# Save the model after training
+torch.save(model.state_dict(), 'captcha_model.pth')
